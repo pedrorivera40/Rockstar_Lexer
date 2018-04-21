@@ -1,0 +1,84 @@
+#lang racket
+
+; NOTES:
+; (string->list "abcd") returns a list of characters...
+; (char-alphabetic? #\A) determines if a given character is alphabetic...
+; (char-numeric? #\0) determines if a given character is a number...
+; (char-whitespace? #\newline) determines if a given character is a white space...
+; (char=? #\1 #\1) determines if two characters are equivalent...
+; (list->string lst) returns a string representative of the list...
+; (display (list->string (cdr (car (merge_alphabetic (categorize (string->list "aaa a1a aabc"))))))) it does something magical...
+
+(define (rockstar_lexer code_string)
+  (display (append_char_list (merge_alphabetic (merge_whitespace (merge_integers (categorize (string->list code_string)))))))
+ )
+
+(define (categorize code)
+  (cond
+    ((null? code) '())
+    ((and (= 1 (length code)) (char=? (car code) #\-)) (cons '(UNKNOWN #\-) (categorize (cdr code))))
+    ((is_delimiter (car code)) (cons (is_delimiter (car code)) (categorize (cdr code))))
+    ((char-alphabetic? (car code)) (cons (list 'IDENTIFIER (car code)) (categorize (cdr code))))
+    ((char-numeric? (car code)) (cons (list 'INTEGER (car code)) (categorize (cdr code))))
+    ((char=? (car code) #\-) (if (char-numeric? (car (cdr code))) (cons '(INTEGER #\-) (categorize (cdr code))) (cons '(UNKNOWN #\-) (categorize (cdr code)))))
+    ((is_operator (car code)) (cons (is_operator (car code)) (categorize (cdr code))))
+    ((is_whitespace (car code)) (cons (is_whitespace (car code)) (categorize (cdr code))))
+    (else (cons (list 'UNKNOWN (car code)) (categorize (cdr code))))
+   )
+ )
+
+(define (merge_integers tuples)
+  (cond
+    ((null? tuples) '())
+    ((= 1 (length tuples)) tuples)
+    ((eq? '() (cdr tuples)) (car tuples))
+    ((and (eq? 'INTEGER (car (car tuples))) (eq? 'INTEGER (car (car (cdr tuples))))) (merge_integers (cons (cons 'INTEGER (append (cdr (car tuples)) (cdr (car (cdr tuples))))) (cdr (cdr tuples)))))
+    (else (cons (car tuples) (merge_integers (cdr tuples))))
+  )
+ )
+
+(define (merge_alphabetic tuples)
+  (cond
+    ((null? tuples) '())
+    ((= 1 (length tuples)) tuples)
+    ((eq? '() (cdr tuples)) (car tuples))
+    ((and (eq? 'IDENTIFIER (car (car tuples))) (eq? 'IDENTIFIER (car (car (cdr tuples))))) (merge_alphabetic (cons (cons 'IDENTIFIER (append (cdr (car tuples)) (cdr (car (cdr tuples))))) (cdr (cdr tuples)))))
+    (else (cons (car tuples) (merge_alphabetic (cdr tuples))))
+  )
+ )
+
+(define (merge_whitespace tuples)
+  (cond
+    ((null? tuples) '())
+    ((= 1 (length tuples)) tuples)
+    ((and (eq? 'WHITE_SPACE (car (car tuples))) (eq? 'WHITE_SPACE (car (car (cdr tuples))))) (merge_whitespace (cdr tuples)))
+    (else (cons (car tuples) (merge_whitespace (cdr tuples))))
+  )
+ )
+
+(define (append_char_list tuples)
+  tuples
+  )
+
+(define (is_operator c)
+  (cond
+    ((char=? c #\+) '(OP +))
+    ((char=? c #\*) '(OP *)) 
+    ((char=? c '#\%) '(OP %))
+    (else #F)
+   )
+)
+
+(define (is_delimiter c)
+  (cond
+    ((char=? c #\() '(LP))
+    ((char=? c #\)) '(RP))
+    ((char=? c '#\[) '(LB))
+    ((char=? c '#\]) '(RB))
+    (else #F)
+   )
+)
+
+(define (is_whitespace c)
+  (if (char-whitespace? c) '(WHITE_SPACE) #F)
+)
